@@ -103,20 +103,7 @@ export function CalendarGrid() {
     }
   };
 
-  const isDateSelected = (date: Date) => {
-    if (!dragSelection.isSelecting || !dragSelection.startDate || !dragSelection.endDate) {
-      return false;
-    }
-    
-    const start = new Date(dragSelection.startDate);
-    const end = new Date(dragSelection.endDate);
-    const current = new Date(date);
-    
-    const minDate = start < end ? start : end;
-    const maxDate = start < end ? end : start;
-    
-    return current >= minDate && current <= maxDate;
-  };
+
 
   return (
     <DndContext
@@ -156,23 +143,7 @@ export function CalendarGrid() {
           })}
         </div>
 
-        {/* Drag Selection Overlay */}
-        {dragSelection.isSelecting && (
-          <div className="absolute inset-0 pointer-events-none">
-            {calendarDays.map((date) => (
-              <div
-                key={`selection-${date.toISOString()}`}
-                className={`absolute inset-0 ${
-                  isDateSelected(date) ? 'bg-blue-200 bg-opacity-30' : ''
-                }`}
-                style={{
-                  gridColumn: (date.getDay() + 1),
-                  gridRow: Math.ceil((date.getDate() + new Date(date.getFullYear(), date.getMonth(), 1).getDay()) / 7),
-                }}
-              />
-            ))}
-          </div>
-        )}
+
       </div>
     </DndContext>
   );

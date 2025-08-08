@@ -47,11 +47,14 @@ function calendarReducer(state: CalendarState, action: CalendarAction): Calendar
         tasks: [...state.tasks, action.payload],
       };
     case 'UPDATE_TASK':
+      console.log('CalendarContext: UPDATE_TASK received', action.payload);
+      const updatedTasks = state.tasks.map(task => 
+        task.id === action.payload.id ? action.payload : task
+      );
+      console.log('CalendarContext: Updated tasks', updatedTasks);
       return {
         ...state,
-        tasks: state.tasks.map(task => 
-          task.id === action.payload.id ? action.payload : task
-        ),
+        tasks: updatedTasks,
       };
     case 'DELETE_TASK':
       return {

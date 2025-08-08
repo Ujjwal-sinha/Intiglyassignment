@@ -3,7 +3,7 @@ import type { Task } from '../types';
 import { useCalendar } from '../context/CalendarContext';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { addDays, isAfter, isBefore } from 'date-fns';
+import { addDays, startOfDay } from 'date-fns';
 
 interface TaskBarProps {
   task: Task;
@@ -26,6 +26,7 @@ export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
       task,
       type: 'task',
     },
+    disabled: isResizing, // Disable drag when resizing
   });
 
   const style = {
@@ -46,9 +47,9 @@ export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
     startDateRef.current = edge === 'start' ? new Date(task.startDate) : new Date(task.endDate);
   };
 
-  // Handle resize move
+  // Handle resize move - Simplified and robust
   const handleResizeMove = (e: MouseEvent | TouchEvent) => {
-    if (!isResizing || !resizeMode || !tempTask || !taskRef.current) return;
+    if (!isResizing || !resizeMode || !startDateRef.current || !taskRef.current) return;
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     
@@ -62,29 +63,42 @@ export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
     const deltaX = clientX - startXRef.current;
     const daysDelta = Math.round(deltaX / dayWidth);
 
-    if (daysDelta !== 0 && startDateRef.current) {
-      const updatedTask = { ...tempTask };
+    // Create updated task based on original task
+    const updatedTask = { ...task };
+    
+    if (resizeMode === 'start') {
+      // Resizing start date
+      const newStartDate = startOfDay(addDays(startDateRef.current, daysDelta));
+      const currentEndDate = startOfDay(updatedTask.endDate);
       
-      if (resizeMode === 'start') {
-        // Resizing start date
-        const newStartDate = addDays(startDateRef.current, daysDelta);
-        
-        // Prevent start date from going after end date
-        if (!isAfter(newStartDate, updatedTask.endDate)) {
-          updatedTask.startDate = newStartDate;
-          setTempTask(updatedTask);
-        }
+      // Ensure start date is before end date
+      if (newStartDate < currentEndDate) {
+        updatedTask.startDate = newStartDate;
       } else {
-        // Resizing end date
-        const newEndDate = addDays(startDateRef.current, daysDelta);
-        
-        // Prevent end date from going before start date
-        if (!isBefore(newEndDate, updatedTask.startDate)) {
-          updatedTask.endDate = newEndDate;
-          setTempTask(updatedTask);
-        }
+        // Minimum 1-day duration
+        updatedTask.startDate = addDays(currentEndDate, -1);
+      }
+    } else {
+      // Resizing end date
+      const newEndDate = startOfDay(addDays(startDateRef.current, daysDelta));
+      const currentStartDate = startOfDay(updatedTask.startDate);
+      
+      // Ensure end date is after start date
+      if (newEndDate > currentStartDate) {
+        updatedTask.endDate = newEndDate;
+      } else {
+        // Minimum 1-day duration
+        updatedTask.endDate = addDays(currentStartDate, 1);
       }
     }
+    
+    // Always update for live preview
+    setTempTask(updatedTask);
+    
+    // Debug logging
+    console.log('Resizing task:', task.name, 'Original:', task.startDate, '->', task.endDate);
+    console.log('Mode:', resizeMode, 'Delta:', daysDelta);
+    console.log('Updated:', updatedTask.startDate, '->', updatedTask.endDate);
   };
 
   // Handle resize end
@@ -94,8 +108,13 @@ export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
       const startChanged = tempTask.startDate.getTime() !== task.startDate.getTime();
       const endChanged = tempTask.endDate.getTime() !== task.endDate.getTime();
       
+      console.log('Resize end:', { startChanged, endChanged, tempTask });
+      
       if (startChanged || endChanged) {
+        console.log('Dispatching UPDATE_TASK with:', tempTask);
         dispatch({ type: 'UPDATE_TASK', payload: tempTask });
+      } else {
+        console.log('No changes detected, not updating');
       }
     }
     
@@ -111,28 +130,38 @@ export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
     if (isResizing) {
       const handleMouseMove = (e: MouseEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         handleResizeMove(e);
       };
-      const handleMouseUp = () => handleResizeEnd();
+      const handleMouseUp = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleResizeEnd();
+      };
       const handleTouchMove = (e: TouchEvent) => {
         e.preventDefault();
+        e.stopPropagation();
         handleResizeMove(e);
       };
-      const handleTouchEnd = () => handleResizeEnd();
+      const handleTouchEnd = (e: TouchEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleResizeEnd();
+      };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
-      document.addEventListener('touchend', handleTouchEnd);
+      document.addEventListener('mousemove', handleMouseMove, { capture: true });
+      document.addEventListener('mouseup', handleMouseUp, { capture: true });
+      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+      document.addEventListener('touchend', handleTouchEnd, { capture: true });
 
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        document.removeEventListener('touchmove', handleTouchMove);
-        document.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener('mousemove', handleMouseMove, { capture: true });
+        document.removeEventListener('mouseup', handleMouseUp, { capture: true });
+        document.removeEventListener('touchmove', handleTouchMove, { capture: true });
+        document.removeEventListener('touchend', handleTouchEnd, { capture: true });
       };
     }
-  }, [isResizing, resizeMode, tempTask]);
+  }, [isResizing, resizeMode]);
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isResizing) {
@@ -152,16 +181,33 @@ export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
   const displayTask = isResizing && tempTask ? tempTask : task;
 
   const getTaskWidth = () => {
-    const daysDiff = Math.ceil((displayTask.endDate.getTime() - displayTask.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return Math.min(daysDiff * 100, 100); // Cap at 100% width
+    if (!isFirstDay) {
+      // If this is not the first day, don't show the task bar here
+      // The task bar should only be rendered on the first day and span across
+      return 0;
+    }
+    
+    // Calculate how many days the task spans
+    const taskStartDate = startOfDay(displayTask.startDate);
+    const taskEndDate = startOfDay(displayTask.endDate);
+    const daysDiff = Math.ceil((taskEndDate.getTime() - taskStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    // Return width as percentage (each day is ~14.28% of the week)
+    return Math.min(daysDiff * 14.28, 100);
   };
 
   const getTaskPosition = () => {
-    if (isFirstDay) {
-      return 0;
-    }
-    return 0; // For now, all tasks start at the left edge
+    return 0; // Always start at the left edge of the first day
   };
+
+  // Only apply drag listeners when not resizing
+  const dragProps = isResizing ? {} : { ...attributes, ...listeners };
+
+  // Don't render if not first day (task bar is only shown on first day and spans)
+  const taskWidth = getTaskWidth();
+  if (taskWidth === 0) {
+    return null;
+  }
 
   return (
     <div
@@ -169,39 +215,42 @@ export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
         setNodeRef(node);
         if (node) taskRef.current = node;
       }}
-      {...attributes}
-      {...listeners}
-      className={`task-bar ${displayTask.category} absolute top-0 left-0 right-0 z-10 ${isResizing ? `resizing resizing-${resizeMode}` : ''}`}
+      {...dragProps}
+      className={`task-bar ${displayTask.category} absolute top-0 z-10 ${isResizing ? `resizing resizing-${resizeMode}` : ''}`}
       style={{
         ...style,
-        width: `${getTaskWidth()}%`,
+        width: `${taskWidth}%`,
         left: `${getTaskPosition()}%`,
         marginTop: `${dayIndex * 24}px`,
-        cursor: isResizing ? 'col-resize' : 'grab',
+        cursor: isResizing ? 'ew-resize' : 'grab',
       }}
       onClick={handleClick}
     >
       <div className="flex items-center justify-between h-full relative">
         {/* Left resize handle */}
         <div
-          className="resize-handle left-0 w-4"
+          className="resize-handle left-0 w-6 flex items-center justify-center"
           onMouseDown={(e) => handleResizeStart(e, 'start')}
           onTouchStart={(e) => handleResizeStart(e, 'start')}
           title="Drag to extend or reduce start date"
-        />
+        >
+          <div className="w-1 h-4 bg-white bg-opacity-60 rounded"></div>
+        </div>
         
-        {/* Task content */}
-        <span className="flex-1 px-1 text-xs truncate z-10">
-          {isFirstDay ? displayTask.name : ''}
-        </span>
+                       {/* Task content */}
+               <span className="flex-1 px-1 text-xs truncate z-10 pointer-events-none">
+                 {displayTask.name}
+               </span>
         
         {/* Right resize handle */}
         <div
-          className="resize-handle right-0 w-4"
+          className="resize-handle right-0 w-6 flex items-center justify-center"
           onMouseDown={(e) => handleResizeStart(e, 'end')}
           onTouchStart={(e) => handleResizeStart(e, 'end')}
           title="Drag to extend or reduce end date"
-        />
+        >
+          <div className="w-1 h-4 bg-white bg-opacity-60 rounded"></div>
+        </div>
       </div>
     </div>
   );

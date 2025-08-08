@@ -15,7 +15,7 @@ interface CalendarDayProps {
 
 export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: CalendarDayProps) {
   const { state } = useCalendar();
-  const { tasks } = state;
+  const { tasks, dragSelection } = state;
   const [isDragging, setIsDragging] = useState(false);
   const dayRef = useRef<HTMLDivElement>(null);
 
@@ -64,13 +64,28 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
     return { task, isFirstDay };
   };
 
+  const isDateSelected = () => {
+    if (!dragSelection.isSelecting || !dragSelection.startDate || !dragSelection.endDate) {
+      return false;
+    }
+    
+    const start = new Date(dragSelection.startDate);
+    const end = new Date(dragSelection.endDate);
+    const current = new Date(day.date);
+    
+    const minDate = start < end ? start : end;
+    const maxDate = start < end ? end : start;
+    
+    return current >= minDate && current <= maxDate;
+  };
+
   return (
     <div
       ref={(node) => {
         setNodeRef(node);
         dayRef.current = node;
       }}
-      className={`calendar-day ${day.isToday ? 'today' : ''} ${!day.isCurrentMonth ? 'other-month' : ''}`}
+      className={`calendar-day ${day.isToday ? 'today' : ''} ${!day.isCurrentMonth ? 'other-month' : ''} ${isDateSelected() ? 'bg-blue-200 bg-opacity-50' : ''}`}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
     >

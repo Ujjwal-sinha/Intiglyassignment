@@ -56,6 +56,15 @@ function CalendarApp() {
               >
                 Today
               </button>
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.reload();
+                }}
+                className="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+              >
+                Reset
+              </button>
             </div>
             
             <button

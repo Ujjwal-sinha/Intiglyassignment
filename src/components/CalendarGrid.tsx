@@ -135,7 +135,7 @@ export function CalendarGrid() {
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7 relative">
           {calendarDays.map((date) => {
             const dayData = {
               date,

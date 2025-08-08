@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .calendar-day {
+    @apply border border-gray-200 p-2 min-h-[100px] relative bg-white hover:bg-gray-50 transition-colors;
+  }
+  
+  .calendar-day.today {
+    @apply bg-blue-50 border-blue-300;
+  }
+  
+  .calendar-day.other-month {
+    @apply bg-gray-50 text-gray-400;
+  }
+  
+  .task-bar {
+    @apply rounded px-2 py-1 text-xs text-white font-medium cursor-pointer transition-all duration-200;
+  }
+  
+  .task-bar:hover {
+    @apply shadow-md transform scale-105;
+  }
+  
+  .task-bar.todo {
+    @apply bg-red-500;
+  }
+  
+  .task-bar.in-progress {
+    @apply bg-blue-500;
+  }
+  
+  .task-bar.review {
+    @apply bg-yellow-500;
+  }
+  
+  .task-bar.completed {
+    @apply bg-green-500;
+  }
+  
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  }
+  
+  .modal-content {
+    @apply bg-white rounded-lg p-6 w-full max-w-md mx-4;
+  }
+  
+  .filter-checkbox {
+    @apply flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer;
+  }
+}

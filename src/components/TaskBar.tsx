@@ -3,19 +3,22 @@ import type { Task } from '../types';
 import { useCalendar } from '../context/CalendarContext';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { addDays, isAfter, isBefore } from 'date-fns';
 
 interface TaskBarProps {
   task: Task;
   isFirstDay: boolean;
-  isLastDay: boolean;
   dayIndex: number;
 }
 
-export function TaskBar({ task, isFirstDay, isLastDay, dayIndex }: TaskBarProps) {
+export function TaskBar({ task, isFirstDay, dayIndex }: TaskBarProps) {
   const { dispatch } = useCalendar();
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState<{ x: number; date: Date; edge: 'start' | 'end' } | null>(null);
+  const [resizeMode, setResizeMode] = useState<'start' | 'end' | null>(null);
+  const [tempTask, setTempTask] = useState<Task | null>(null);
   const taskRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef<number>(0);
+  const startDateRef = useRef<Date | null>(null);
   
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: `task-${task.id}`,
@@ -29,20 +32,26 @@ export function TaskBar({ task, isFirstDay, isLastDay, dayIndex }: TaskBarProps)
     transform: CSS.Translate.toString(transform),
   };
 
-  const handleMouseDown = (e: React.MouseEvent, edge: 'start' | 'end') => {
+  // Handle resize start
+  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent, edge: 'start' | 'end') => {
     e.stopPropagation();
     e.preventDefault();
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    
     setIsResizing(true);
-    setResizeStart({
-      x: e.clientX,
-      date: edge === 'start' ? task.startDate : task.endDate,
-      edge,
-    });
+    setResizeMode(edge);
+    setTempTask({ ...task });
+    startXRef.current = clientX;
+    startDateRef.current = edge === 'start' ? new Date(task.startDate) : new Date(task.endDate);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing || !resizeStart || !taskRef.current) return;
+  // Handle resize move
+  const handleResizeMove = (e: MouseEvent | TouchEvent) => {
+    if (!isResizing || !resizeMode || !tempTask || !taskRef.current) return;
 
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    
     // Get the calendar grid container
     const calendarGrid = taskRef.current.closest('.grid');
     if (!calendarGrid) return;
@@ -50,66 +59,100 @@ export function TaskBar({ task, isFirstDay, isLastDay, dayIndex }: TaskBarProps)
     const gridRect = calendarGrid.getBoundingClientRect();
     const dayWidth = gridRect.width / 7; // 7 days in a week
     
-    const deltaX = e.clientX - resizeStart.x;
+    const deltaX = clientX - startXRef.current;
     const daysDelta = Math.round(deltaX / dayWidth);
 
-    // Allow more sensitive resizing
-    if (Math.abs(daysDelta) >= 0.5) {
-      const newDate = new Date(resizeStart.date);
-      newDate.setDate(newDate.getDate() + daysDelta);
-
-      const updatedTask = { ...task };
+    if (daysDelta !== 0 && startDateRef.current) {
+      const updatedTask = { ...tempTask };
       
-      if (resizeStart.edge === 'start') {
-        // Resizing start date - allow extending backwards
-        updatedTask.startDate = newDate;
+      if (resizeMode === 'start') {
+        // Resizing start date
+        const newStartDate = addDays(startDateRef.current, daysDelta);
+        
+        // Prevent start date from going after end date
+        if (!isAfter(newStartDate, updatedTask.endDate)) {
+          updatedTask.startDate = newStartDate;
+          setTempTask(updatedTask);
+        }
       } else {
-        // Resizing end date - allow extending forwards
-        updatedTask.endDate = newDate;
-      }
-
-      // Ensure minimum 1-day duration
-      if (updatedTask.startDate < updatedTask.endDate) {
-        dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
-        setResizeStart({ 
-          x: e.clientX, 
-          date: newDate,
-          edge: resizeStart.edge 
-        });
+        // Resizing end date
+        const newEndDate = addDays(startDateRef.current, daysDelta);
+        
+        // Prevent end date from going before start date
+        if (!isBefore(newEndDate, updatedTask.startDate)) {
+          updatedTask.endDate = newEndDate;
+          setTempTask(updatedTask);
+        }
       }
     }
   };
 
-  const handleMouseUp = () => {
+  // Handle resize end
+  const handleResizeEnd = () => {
+    if (isResizing && tempTask) {
+      // Only commit if the task actually changed
+      const startChanged = tempTask.startDate.getTime() !== task.startDate.getTime();
+      const endChanged = tempTask.endDate.getTime() !== task.endDate.getTime();
+      
+      if (startChanged || endChanged) {
+        dispatch({ type: 'UPDATE_TASK', payload: tempTask });
+      }
+    }
+    
     setIsResizing(false);
-    setResizeStart(null);
+    setResizeMode(null);
+    setTempTask(null);
+    startXRef.current = 0;
+    startDateRef.current = null;
   };
 
+  // Add event listeners for resize
   useEffect(() => {
     if (isResizing) {
+      const handleMouseMove = (e: MouseEvent) => {
+        e.preventDefault();
+        handleResizeMove(e);
+      };
+      const handleMouseUp = () => handleResizeEnd();
+      const handleTouchMove = (e: TouchEvent) => {
+        e.preventDefault();
+        handleResizeMove(e);
+      };
+      const handleTouchEnd = () => handleResizeEnd();
+
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleTouchEnd);
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
       };
     }
-  }, [isResizing, resizeStart]);
+  }, [isResizing, resizeMode, tempTask]);
 
   const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    dispatch({
-      type: 'SET_MODAL',
-      payload: {
-        isOpen: true,
-        task,
-        mode: 'edit',
-      },
-    });
+    if (!isResizing) {
+      e.stopPropagation();
+      dispatch({
+        type: 'SET_MODAL',
+        payload: {
+          isOpen: true,
+          task,
+          mode: 'edit',
+        },
+      });
+    }
   };
 
+  // Use tempTask for display if resizing, otherwise use original task
+  const displayTask = isResizing && tempTask ? tempTask : task;
+
   const getTaskWidth = () => {
-    const daysDiff = Math.ceil((task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const daysDiff = Math.ceil((displayTask.endDate.getTime() - displayTask.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     return Math.min(daysDiff * 100, 100); // Cap at 100% width
   };
 
@@ -128,7 +171,7 @@ export function TaskBar({ task, isFirstDay, isLastDay, dayIndex }: TaskBarProps)
       }}
       {...attributes}
       {...listeners}
-      className={`task-bar ${task.category} absolute top-0 left-0 right-0 z-10 ${isResizing ? 'resizing' : ''}`}
+      className={`task-bar ${displayTask.category} absolute top-0 left-0 right-0 z-10 ${isResizing ? `resizing resizing-${resizeMode}` : ''}`}
       style={{
         ...style,
         width: `${getTaskWidth()}%`,
@@ -139,25 +182,25 @@ export function TaskBar({ task, isFirstDay, isLastDay, dayIndex }: TaskBarProps)
       onClick={handleClick}
     >
       <div className="flex items-center justify-between h-full relative">
-        {/* Left resize handle - always visible for better UX */}
+        {/* Left resize handle */}
         <div
-          className="resize-handle left-0 w-2"
-          onMouseDown={(e) => handleMouseDown(e, 'start')}
-          title="Drag to resize start date"
-          style={{ opacity: isFirstDay ? 1 : 0.3 }}
+          className="resize-handle left-0 w-4"
+          onMouseDown={(e) => handleResizeStart(e, 'start')}
+          onTouchStart={(e) => handleResizeStart(e, 'start')}
+          title="Drag to extend or reduce start date"
         />
         
         {/* Task content */}
         <span className="flex-1 px-1 text-xs truncate z-10">
-          {isFirstDay ? task.name : ''}
+          {isFirstDay ? displayTask.name : ''}
         </span>
         
-        {/* Right resize handle - always visible for better UX */}
+        {/* Right resize handle */}
         <div
-          className="resize-handle right-0 w-2"
-          onMouseDown={(e) => handleMouseDown(e, 'end')}
-          title="Drag to resize end date"
-          style={{ opacity: isLastDay ? 1 : 0.3 }}
+          className="resize-handle right-0 w-4"
+          onMouseDown={(e) => handleResizeStart(e, 'end')}
+          onTouchStart={(e) => handleResizeStart(e, 'end')}
+          title="Drag to extend or reduce end date"
         />
       </div>
     </div>

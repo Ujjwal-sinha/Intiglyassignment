@@ -36,15 +36,40 @@
   }
   
   .task-bar .resize-handle {
-    @apply absolute top-0 h-full bg-black bg-opacity-30 cursor-col-resize transition-all duration-200 z-20;
+    @apply absolute top-0 h-full bg-black bg-opacity-70 cursor-col-resize transition-all duration-200 z-20;
   }
   
   .task-bar .resize-handle:hover {
-    @apply bg-opacity-60 bg-white bg-opacity-20;
+    @apply bg-opacity-100 bg-white bg-opacity-60;
   }
   
   .task-bar:hover .resize-handle {
-    @apply bg-opacity-50;
+    @apply bg-opacity-90;
+  }
+  
+  .task-bar.resizing .resize-handle {
+    @apply bg-opacity-100 bg-white bg-opacity-80;
+  }
+  
+  .task-bar.resizing-start .resize-handle.left-0 {
+    @apply bg-blue-500 bg-opacity-100;
+  }
+  
+  .task-bar.resizing-end .resize-handle.right-0 {
+    @apply bg-green-500 bg-opacity-100;
+  }
+  
+  .task-bar.resizing {
+    @apply shadow-lg transform scale-105 z-50;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  }
+  
+  .task-bar.resizing-start .resize-handle.left-0 {
+    @apply bg-blue-500 bg-opacity-80;
+  }
+  
+  .task-bar.resizing-end .resize-handle.right-0 {
+    @apply bg-green-500 bg-opacity-80;
   }
   
   .task-bar.todo {

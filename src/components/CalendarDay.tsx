@@ -61,8 +61,7 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
 
   const getTaskForDay = (task: Task, dayDate: Date) => {
     const isFirstDay = dayDate.getTime() === task.startDate.getTime();
-    const isLastDay = dayDate.getTime() === task.endDate.getTime();
-    return { task, isFirstDay, isLastDay };
+    return { task, isFirstDay };
   };
 
   return (
@@ -81,13 +80,12 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
       
       <div className="relative min-h-[60px]">
         {dayTasks.map((task, index) => {
-          const { isFirstDay, isLastDay } = getTaskForDay(task, day.date);
+          const { isFirstDay } = getTaskForDay(task, day.date);
           return (
             <TaskBar
               key={`${task.id}-${day.date.toISOString()}`}
               task={task}
               isFirstDay={isFirstDay}
-              isLastDay={isLastDay}
               dayIndex={index}
             />
           );

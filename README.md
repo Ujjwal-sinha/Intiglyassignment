@@ -2,8 +2,6 @@
 
 A beautiful, modern calendar application built with React, TypeScript, and Tailwind CSS. Features drag-and-drop task management, multi-day task spanning, glassmorphism UI design, and comprehensive task filtering.
 
-![Smart Calendar Preview](https://img.shields.io/badge/Status-Completed-brightgreen) ![React](https://img.shields.io/badge/React-19.1.1-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.8.3-blue) ![Tailwind](https://img.shields.io/badge/Tailwind-3.4.17-cyan)
-
 ## ✨ Features
 
 ### 🎯 Core Functionality

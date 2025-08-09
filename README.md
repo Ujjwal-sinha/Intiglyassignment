@@ -287,52 +287,6 @@ export default {
 }
 ```
 
-## 🧪 Testing & Quality
-
-### Code Quality Tools
-- **ESLint**: Strict linting rules for code consistency
-- **TypeScript**: Full type safety with strict mode
-- **Prettier**: Code formatting (configured in ESLint)
-
-### Performance Optimizations
-- **React.useCallback**: Memoized expensive calculations
-- **Proper Dependencies**: Optimized useEffect dependency arrays
-- **Efficient Re-renders**: Minimal state updates and proper component structure
-
-## 📱 Browser Support
-
-- ✅ Chrome 90+
-- ✅ Firefox 88+
-- ✅ Safari 14+
-- ✅ Edge 90+
-
-## 🔮 Future Enhancements
-
-### Planned Features
-- [ ] **Dark Mode**: Toggle between light/dark themes
-- [ ] **Calendar Views**: Week and day views
-- [ ] **Task Priorities**: High, medium, low priority levels
-- [ ] **Recurring Tasks**: Daily, weekly, monthly repeats
-- [ ] **Export/Import**: JSON/CSV data export
-- [ ] **Notifications**: Browser notifications for due tasks
-- [ ] **Collaboration**: Multi-user task sharing
-- [ ] **Mobile App**: React Native implementation
-
-### Technical Improvements
-- [ ] **Unit Tests**: Jest + React Testing Library
-- [ ] **E2E Tests**: Cypress or Playwright
-- [ ] **PWA**: Service worker for offline functionality
-- [ ] **Backend Integration**: REST API or GraphQL
-- [ ] **Database**: PostgreSQL or MongoDB integration
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -341,16 +295,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Ujjwal Sinha**
 - GitHub: [@ujjwal-sinha](https://github.com/ujjwal-sinha)
-- Email: ujjwal.sinha@example.com
+- Email: ujjwalsinha418@gmail.com
 
-## 🙏 Acknowledgments
-
-- **React Team** for the amazing framework
-- **Tailwind CSS** for the utility-first CSS approach
-- **DnD Kit** for drag and drop functionality
-- **date-fns** for date manipulation utilities
-- **Vite** for the blazing fast build tool
-
----
-
-⭐ **If you found this project helpful, please give it a star!** ⭐

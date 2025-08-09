@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import type { Task } from '../types';
 import { useCalendar } from '../context/CalendarContext';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { addDays, startOfDay } from 'date-fns';
+import { addDays, startOfDay, differenceInDays } from 'date-fns';
 
 interface TaskBarProps {
   task: Task;
@@ -14,20 +15,72 @@ interface TaskBarProps {
 
 export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarProps) {
   const { dispatch } = useCalendar();
+
+  // Resize state
   const [isResizing, setIsResizing] = useState(false);
   const [resizeMode, setResizeMode] = useState<'start' | 'end' | null>(null);
-  const [currentMouseX, setCurrentMouseX] = useState(0);
-  const [tempStartDate, setTempStartDate] = useState<Date | null>(null);
-  const [tempEndDate, setTempEndDate] = useState<Date | null>(null);
-  const taskRef = useRef<HTMLDivElement>(null);
+  const [resizeStartDate, setResizeStartDate] = useState<Date | null>(null);
+  const [resizeEndDate, setResizeEndDate] = useState<Date | null>(null);
+  const [mouseX, setMouseX] = useState(0);
+  const [initialMouseX, setInitialMouseX] = useState(0);
+  const [cellWidth, setCellWidth] = useState(0);
 
-  // Format date for display
-  const formatDateForDisplay = (date: Date): string => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+  const taskRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate cell width from calendar grid
+  const calculateCellWidth = useCallback(() => {
+    const calendarGrid = document.querySelector('.grid.grid-cols-7.relative');
+    if (calendarGrid) {
+      const gridWidth = calendarGrid.getBoundingClientRect().width;
+      return gridWidth / 7;
+    }
+    return 100; // Fallback
+  }, []);
+
+  // Get current dates (resize dates during resize, actual dates otherwise)
+  // This ensures we show the live resize state, not the original task dates
+  const getCurrentDates = () => {
+    if (isResizing && resizeStartDate && resizeEndDate) {
+      return {
+        startDate: resizeStartDate,
+        endDate: resizeEndDate
+      };
+    }
+    return {
+      startDate: task.startDate,
+      endDate: task.endDate
+    };
   };
+
+  // Calculate task position and width
+  const getTaskMetrics = useCallback(() => {
+    if (!isFirstDay) return { width: 0, left: 0, isVisible: false };
+
+    const { startDate, endDate } = getCurrentDates();
+    const weekStart = startOfDay(weekStartDate);
+    const weekEnd = addDays(weekStart, 6);
+
+    // Find visible portion in this week
+    const visibleStart = startDate < weekStart ? weekStart : startDate;
+    const visibleEnd = endDate > weekEnd ? weekEnd : endDate;
+
+    if (visibleStart > visibleEnd) return { width: 0, left: 0, isVisible: false };
+
+    // Calculate day indices (0-6)
+    const startDayIndex = Math.floor((visibleStart.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
+    const endDayIndex = Math.floor((visibleEnd.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Convert to percentages
+    const left = (startDayIndex / 7) * 100;
+    const width = ((endDayIndex - startDayIndex + 1) / 7) * 100;
+
+    return {
+      width: Math.max(width, 14.28), // Minimum one day (100% / 7 days)
+      left: Math.max(0, Math.min(left, 85.72)),
+      isVisible: true
+    };
+  }, [isFirstDay, weekStartDate, task.startDate, task.endDate, resizeStartDate, resizeEndDate, isResizing]);
 
   // Drag and drop for moving tasks (disabled during resize)
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -43,133 +96,126 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
     transform: CSS.Translate.toString(transform),
   };
 
-  // Handle resize start
-  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent, edge: 'start' | 'end') => {
+  // Handle resize start - professional implementation
+  const handleResizeStart = (e: React.MouseEvent, edge: 'start' | 'end') => {
     e.stopPropagation();
     e.preventDefault();
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientX = e.clientX;
+    const calculatedCellWidth = calculateCellWidth();
 
     setIsResizing(true);
     setResizeMode(edge);
-    setCurrentMouseX(clientX);
-    setTempStartDate(new Date(task.startDate));
-    setTempEndDate(new Date(task.endDate));
+    setInitialMouseX(clientX);
+    setMouseX(clientX);
+    setCellWidth(calculatedCellWidth);
+    setResizeStartDate(new Date(task.startDate));
+    setResizeEndDate(new Date(task.endDate));
   };
 
-  // Simple and direct resize move handler
-  const handleResizeMove = (e: MouseEvent | TouchEvent) => {
-    if (!isResizing || !resizeMode || !tempStartDate || !tempEndDate) return;
+  // Professional resize handler with precise deltaX calculation
+  const handleResizing = useCallback((e: MouseEvent) => {
+    if (!isResizing || !resizeMode || cellWidth === 0) return;
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    setCurrentMouseX(clientX);
+    const currentX = e.clientX;
+    setMouseX(currentX);
 
-    // Find the calendar day that the mouse is over
-    const dayElements = document.querySelectorAll('.calendar-day');
-    let targetDate: Date | null = null;
+    // Calculate deltaX and convert to days
+    const deltaX = currentX - initialMouseX;
+    const daysDelta = Math.round(deltaX / cellWidth);
 
-    for (const dayEl of dayElements) {
-      const rect = dayEl.getBoundingClientRect();
-      if (clientX >= rect.left && clientX <= rect.right) {
-        const dateStr = dayEl.getAttribute('data-date');
-        if (dateStr) {
-          targetDate = new Date(dateStr);
-          break;
-        }
-      }
-    }
-
-    if (!targetDate) return;
-
-    // Calculate new dates based on resize mode
-    let newStartDate: Date;
-    let newEndDate: Date;
+    // Use the original task dates as the base for calculations
+    let newStartDate = new Date(task.startDate);
+    let newEndDate = new Date(task.endDate);
 
     if (resizeMode === 'start') {
-      // Dragging the start handle
-      newStartDate = startOfDay(targetDate);
-      newEndDate = new Date(task.endDate);
+      // Left handle: adjust startDate only, keep endDate fixed
+      newStartDate = addDays(task.startDate, daysDelta);
 
-      // Ensure start is before end
-      if (newStartDate >= newEndDate) {
-        newStartDate = addDays(newEndDate, -1);
+      // Validation: prevent startDate >= endDate (minimum 1 day)
+      if (newStartDate >= task.endDate) {
+        newStartDate = addDays(task.endDate, -1);
       }
     } else {
-      // Dragging the end handle
-      newStartDate = new Date(task.startDate);
-      newEndDate = startOfDay(targetDate);
+      // Right handle: adjust endDate only, keep startDate fixed
+      newEndDate = addDays(task.endDate, daysDelta);
 
-      // Ensure end is after start
-      if (newEndDate <= newStartDate) {
-        newEndDate = addDays(newStartDate, 1);
+      // Validation: prevent endDate <= startDate (minimum 1 day)
+      if (newEndDate <= task.startDate) {
+        newEndDate = addDays(task.startDate, 1);
       }
     }
 
-    // Update temp dates for immediate visual feedback
-    setTempStartDate(newStartDate);
-    setTempEndDate(newEndDate);
-  };
+    // Only update if dates actually changed to prevent unnecessary re-renders
+    const currentResizeStart = resizeStartDate?.getTime() || 0;
+    const currentResizeEnd = resizeEndDate?.getTime() || 0;
 
-  // Handle resize end
-  const handleResizeEnd = () => {
-    if (tempStartDate && tempEndDate) {
-      // Update the actual task with final dates
+    if (newStartDate.getTime() !== currentResizeStart || newEndDate.getTime() !== currentResizeEnd) {
+      setResizeStartDate(newStartDate);
+      setResizeEndDate(newEndDate);
+    }
+  }, [isResizing, resizeMode, cellWidth, initialMouseX, task.startDate, task.endDate, resizeStartDate, resizeEndDate]);
+
+  // Handle resize end - persist changes with proper cleanup
+  const handleResizeEnd = useCallback(() => {
+    if (resizeStartDate && resizeEndDate) {
+      // Create updated task with ONLY the changed dates, keeping all other properties
       const updatedTask: Task = {
-        ...task,
-        startDate: tempStartDate,
-        endDate: tempEndDate,
+        ...task, // Keep all existing properties (id, name, category, etc.)
+        startDate: resizeStartDate,
+        endDate: resizeEndDate,
       };
 
-      dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
+      // Use flushSync to ensure state updates are batched properly and prevent duplicate rendering
+      flushSync(() => {
+        // Update the task by ID - this should replace the existing task, not create a new one
+        dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
+        
+        // Clean up resize state immediately to prevent ghost rendering
+        setIsResizing(false);
+        setResizeMode(null);
+        setResizeStartDate(null);
+        setResizeEndDate(null);
+        setMouseX(0);
+        setInitialMouseX(0);
+        setCellWidth(0);
+      });
+    } else {
+      // Clean up even if no valid dates
+      setIsResizing(false);
+      setResizeMode(null);
+      setResizeStartDate(null);
+      setResizeEndDate(null);
+      setMouseX(0);
+      setInitialMouseX(0);
+      setCellWidth(0);
     }
+  }, [resizeStartDate, resizeEndDate, task, dispatch]);
 
-    setIsResizing(false);
-    setResizeMode(null);
-    setCurrentMouseX(0);
-    setTempStartDate(null);
-    setTempEndDate(null);
-  };
-
-  // Add event listeners for resize
+  // Event listeners for resize
   useEffect(() => {
     if (isResizing) {
       const handleMouseMove = (e: MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation();
-        handleResizeMove(e);
+        handleResizing(e);
       };
+
       const handleMouseUp = (e: MouseEvent) => {
         e.preventDefault();
-        e.stopPropagation();
-        handleResizeEnd();
-      };
-      const handleTouchMove = (e: TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        handleResizeMove(e);
-      };
-      const handleTouchEnd = (e: TouchEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
         handleResizeEnd();
       };
 
-      document.addEventListener('mousemove', handleMouseMove, { capture: true });
-      document.addEventListener('mouseup', handleMouseUp, { capture: true });
-      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
-      document.addEventListener('touchend', handleTouchEnd, { capture: true });
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
 
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove, { capture: true });
-        document.removeEventListener('mouseup', handleMouseUp, { capture: true });
-        document.removeEventListener('touchmove', handleTouchMove, { capture: true });
-        document.removeEventListener('touchend', handleTouchEnd, { capture: true });
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isResizing]);
+  }, [isResizing, handleResizing, handleResizeEnd]);
 
   const handleClick = (e: React.MouseEvent) => {
-    // Only open modal if not resizing and not being dragged
     if (!isResizing && !transform) {
       e.stopPropagation();
       dispatch({
@@ -183,49 +229,18 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
     }
   };
 
-  // Task position and width calculation with temp dates support
-  const getTaskMetrics = () => {
-    if (!isFirstDay) {
-      return { width: 0, left: 0 };
-    }
-
-    // Use temp dates during resize for immediate visual feedback
-    const displayStartDate = tempStartDate || task.startDate;
-    const displayEndDate = tempEndDate || task.endDate;
-
-    const taskStartDate = startOfDay(displayStartDate);
-    const taskEndDate = startOfDay(displayEndDate);
-    const weekStart = startOfDay(weekStartDate);
-    const weekEnd = startOfDay(addDays(weekStartDate, 6));
-
-    // Find the visible portion of the task in this week
-    const visibleStart = taskStartDate < weekStart ? weekStart : taskStartDate;
-    const visibleEnd = taskEndDate > weekEnd ? weekEnd : taskEndDate;
-
-    // Calculate day indices (0-6)
-    const startDayIndex = Math.floor((visibleStart.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
-    const endDayIndex = Math.floor((visibleEnd.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
-
-    // Convert to percentages
-    const left = (startDayIndex / 7) * 100;
-    const width = ((endDayIndex - startDayIndex + 1) / 7) * 100;
-
-    return {
-      width: Math.max(width, 14.28), // Minimum one day
-      left: Math.max(0, Math.min(left, 85.72))
-    };
-  };
-
   // Only apply drag listeners when not resizing
   const dragProps = isResizing ? {} : { ...attributes, ...listeners };
 
-  // Get task metrics using D3 scale
-  const { width: taskWidth, left: taskLeft } = getTaskMetrics();
+  // Get task metrics
+  const { width: taskWidth, left: taskLeft, isVisible } = getTaskMetrics();
 
-  // Don't render if not first day (task bar is only shown on first day and spans)
-  if (taskWidth === 0) {
-    return null;
-  }
+  // During resize, ensure this task bar only renders where the resized dates indicate
+  // This prevents the same task from appearing in multiple locations during resize
+  if (!isVisible) return null;
+
+  const { startDate, endDate } = getCurrentDates();
+  const duration = differenceInDays(endDate, startDate) + 1;
 
   return (
     <>
@@ -233,90 +248,109 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
         ref={(node) => {
           setNodeRef(node);
           if (node) taskRef.current = node;
+          containerRef.current = node;
         }}
         {...dragProps}
-        className={`task-bar ${task.category} absolute top-0 z-10 ${isResizing ? `resizing resizing-${resizeMode}` : ''} ${transform ? 'dragging' : ''}`}
+        className={`
+          task-bar ${task.category} rounded-md absolute
+          ${isResizing ? 'resizing' : ''}
+          ${transform ? 'dragging' : ''}
+        `}
         style={{
           ...style,
           width: `${taskWidth}%`,
           left: `${taskLeft}%`,
-          marginTop: `${dayIndex * 28}px`, // Spacing between overlapping tasks
+          top: `${dayIndex * 55}px`,
           cursor: isResizing ? 'ew-resize' : (transform ? 'grabbing' : 'grab'),
+          transition: isResizing ? 'none' : 'all 0.2s ease',
         }}
-        title={`${task.name} (${(tempStartDate || task.startDate).toLocaleDateString()} - ${(tempEndDate || task.endDate).toLocaleDateString()})`}
         onClick={handleClick}
       >
-        <div className="flex items-center h-full relative">
-          {/* Left resize handle */}
-          <div
-            className={`resize-handle absolute left-0 top-0 w-4 h-full cursor-ew-resize flex items-center justify-center z-20 rounded-l transition-all duration-200 ${isResizing && resizeMode === 'start' ? 'bg-blue-400 shadow-lg' : 'hover:bg-black hover:bg-opacity-10'}`}
-            onMouseDown={(e) => handleResizeStart(e, 'start')}
-            onTouchStart={(e) => handleResizeStart(e, 'start')}
-            title="← Drag to adjust start date"
-          >
-            <div className={`w-1 h-4 bg-white rounded shadow-sm transition-all duration-200 ${isResizing && resizeMode === 'start' ? 'bg-opacity-100 w-1.5 h-5' : 'bg-opacity-90'}`}></div>
-          </div>
+        {/* Left resize handle */}
+        <div
+          className={`
+            absolute left-0 top-0 w-4 h-full cursor-ew-resize z-10
+            bg-black bg-opacity-20 rounded-l-lg
+            hover:bg-opacity-40 transition-all duration-200
+            ${isResizing && resizeMode === 'start' ? 'bg-blue-500 bg-opacity-60' : ''}
+          `}
+          onMouseDown={(e) => handleResizeStart(e, 'start')}
+          title="Drag to adjust start date"
+        />
 
-          {/* Task content - clickable area for drag & drop move */}
-          <div className="flex-1 mx-4 text-xs font-medium text-black flex items-center justify-center cursor-grab active:cursor-grabbing">
-            <span className="truncate text-center w-full pointer-events-none">
-              {task.name}
-            </span>
-          </div>
-
-          {/* Right resize handle */}
-          <div
-            className={`resize-handle absolute right-0 top-0 w-4 h-full cursor-ew-resize flex items-center justify-center z-20 rounded-r transition-all duration-200 ${isResizing && resizeMode === 'end' ? 'bg-green-400 shadow-lg' : 'hover:bg-black hover:bg-opacity-10'}`}
-            onMouseDown={(e) => handleResizeStart(e, 'end')}
-            onTouchStart={(e) => handleResizeStart(e, 'end')}
-            title="Drag to adjust end date →"
-          >
-            <div className={`w-1 h-4 bg-white rounded shadow-sm transition-all duration-200 ${isResizing && resizeMode === 'end' ? 'bg-opacity-100 w-1.5 h-5' : 'bg-opacity-90'}`}></div>
-          </div>
+        {/* Task content */}
+        <div className="flex-1 px-1 py-1 flex items-center justify-center text-center">
+          <span className="pointer-events-none leading-tight" style={{ 
+            fontSize: '12px', 
+            wordBreak: 'break-word',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
+          }}>
+            {task.name || 'Task'}
+          </span>
         </div>
+
+        {/* Right resize handle */}
+        <div
+          className={`
+            absolute right-0 top-0 w-4 h-full cursor-ew-resize z-10
+            bg-black bg-opacity-20 rounded-r-lg
+            hover:bg-opacity-40 transition-all duration-200
+            ${isResizing && resizeMode === 'end' ? 'bg-green-500 bg-opacity-60' : ''}
+          `}
+          onMouseDown={(e) => handleResizeStart(e, 'end')}
+          title="Drag to adjust end date"
+        />
       </div>
 
-      {/* Floating resize feedback tooltip */}
-      {isResizing && (
+      {/* Live resize tooltip */}
+      {isResizing && resizeStartDate && resizeEndDate && (
         <div
-          className="fixed z-50 pointer-events-none transform -translate-x-1/2"
+          className="fixed z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full"
           style={{
-            left: `${currentMouseX}px`,
-            top: `${50}px`,
+            left: `${mouseX}px`,
+            top: `${100}px`,
           }}
         >
-          <div className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg shadow-xl border border-blue-500">
+          <div className={`
+            text-black text-sm px-3 py-2 rounded-lg shadow-xl border-2 bg-white
+            ${resizeMode === 'start' ? 'border-blue-400' : 'border-green-400'}
+          `}>
             <div className="font-semibold text-center">
-              📅 {task.name}
+              {task.name}
             </div>
-            <div className="text-xs text-center mt-1 opacity-95">
-              {formatDateForDisplay(tempStartDate || task.startDate)} → {formatDateForDisplay(tempEndDate || task.endDate)}
+            <div className="text-xs text-center mt-1">
+              {resizeStartDate.toLocaleDateString()} → {resizeEndDate.toLocaleDateString()}
             </div>
-            <div className="text-xs text-center mt-1 opacity-80">
-              {resizeMode === 'start' ? '← Adjusting start' : 'Adjusting end →'}
+            <div className="text-xs text-center opacity-80">
+              {duration} day{duration !== 1 ? 's' : ''}
             </div>
           </div>
+          <div className={`
+            absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 
+            border-l-4 border-r-4 border-transparent
+            border-t-4 border-t-white
+          `} />
         </div>
       )}
 
-      {/* Floating drag move feedback tooltip */}
+      {/* Drag move tooltip */}
       {transform && !isResizing && (
         <div
           className="fixed z-50 pointer-events-none transform -translate-x-1/2"
           style={{
             left: `${window.innerWidth / 2}px`,
-            top: `${50}px`,
+            top: `${100}px`,
           }}
         >
-          <div className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg shadow-xl border border-green-500">
+          <div className="bg-white text-black text-sm px-3 py-2 rounded-lg shadow-xl border border-purple-400">
             <div className="font-semibold text-center">
-              🚀 Moving {task.name}
+              Moving {task.name}
             </div>
-            <div className="text-xs text-center mt-1 opacity-95">
-              Duration: {Math.ceil((task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24))} days
-            </div>
-            <div className="text-xs text-center mt-1 opacity-80">
-              Drop on any day to move
+            <div className="text-xs text-center opacity-80">
+              {duration} day{duration !== 1 ? 's' : ''}
             </div>
           </div>
         </div>

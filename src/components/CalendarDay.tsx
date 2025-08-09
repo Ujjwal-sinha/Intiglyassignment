@@ -5,7 +5,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { TaskBar } from './TaskBar';
 import { getDayNumber } from '../utils/dateUtils';
 import { getTasksForDay, filterTasks } from '../utils/taskUtils';
-import { startOfWeek } from 'date-fns';
+import { startOfWeek, startOfDay } from 'date-fns';
 
 interface CalendarDayProps {
   day: CalendarDayType;
@@ -64,10 +64,10 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
   }, [isDragging]);
 
   const getTaskForDay = (task: Task, dayDate: Date) => {
-    // Normalize both dates to start of day for proper comparison
-    const dayStart = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
-    const taskStart = new Date(task.startDate.getFullYear(), task.startDate.getMonth(), task.startDate.getDate());
-    const taskEnd = new Date(task.endDate.getFullYear(), task.endDate.getMonth(), task.endDate.getDate());
+    // Normalize dates to start of day for proper comparison
+    const dayStart = startOfDay(dayDate);
+    const taskStart = startOfDay(task.startDate);
+    const taskEnd = startOfDay(task.endDate);
     
     // Check if this day is within the task range
     const isInTaskRange = dayStart >= taskStart && dayStart <= taskEnd;
@@ -76,16 +76,15 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
       return { task, isFirstDay: false };
     }
     
-    // For tasks spanning multiple days, render the task bar on the first day it appears in this week
-    const weekStart = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate());
+    // For multi-day tasks, only render the TaskBar on the FIRST day it appears in this week
+    // This prevents duplicate rendering across multiple days
+    const weekStart = startOfDay(weekStartDate);
     
     // The first day to render the task bar is the later of:
     // 1. The task's actual start date
     // 2. The start of this week
     const firstDayInWeek = taskStart >= weekStart ? taskStart : weekStart;
     const isFirstDay = dayStart.getTime() === firstDayInWeek.getTime();
-    
-
     
     return { task, isFirstDay };
   };
@@ -131,19 +130,19 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
         {getDayNumber(day.date)}
       </div>
       
-      <div className="relative min-h-[100px]">
-        {dayTasks.map((task, index) => {
-          const { isFirstDay } = getTaskForDay(task, day.date);
-          return (
+      <div className="relative min-h-[140px]">
+        {dayTasks
+          .map((task, index) => ({ originalTask: task, index, ...getTaskForDay(task, day.date) }))
+          .filter(({ isFirstDay }) => isFirstDay) // Only render on first day
+          .map(({ originalTask, index }) => (
             <TaskBar
-              key={`${task.id}-${day.date.toISOString()}`}
-              task={task}
-              isFirstDay={isFirstDay}
+              key={`task-${originalTask.id}-week-${weekStartDate.toISOString()}`}
+              task={originalTask}
+              isFirstDay={true}
               dayIndex={index}
               weekStartDate={weekStartDate}
             />
-          );
-        })}
+          ))}
       </div>
     </div>
   );

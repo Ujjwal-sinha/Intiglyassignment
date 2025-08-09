@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { DndContext, type DragEndEvent, type DragOverEvent, type DragStartEvent } from '@dnd-kit/core';
 import { CalendarDay } from './CalendarDay';
 import { useCalendar } from '../context/CalendarContext';
@@ -54,9 +55,7 @@ export function CalendarGrid() {
       startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
       endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
 
-      // If single day selected, make it a 1-day task (same start and end is fine for single day)
-      // If multiple days selected, keep the range as is
-
+      // Open modal for task creation
       dispatch({
         type: 'SET_MODAL',
         payload: {
@@ -100,14 +99,18 @@ export function CalendarGrid() {
       // Calculate the duration of the task in days
       const duration = differenceInDays(task.endDate, task.startDate);
 
-      // Update task dates - move the task to the new start date and maintain duration
+      // Update task by ID - keep all existing properties, only change dates
       const updatedTask: Task = {
-        ...task,
+        ...task, // Preserve all existing properties (id, name, category, createdAt, etc.)
         startDate: startOfDay(newStartDate),
         endDate: startOfDay(addDays(newStartDate, duration)),
       };
 
-      dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
+      // Use flushSync to ensure proper batching and prevent duplicate rendering during drag
+      flushSync(() => {
+        // This should update the existing task by matching task.id, not create a duplicate
+        dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
+      });
     }
   };
 

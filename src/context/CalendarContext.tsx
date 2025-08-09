@@ -47,9 +47,13 @@ function calendarReducer(state: CalendarState, action: CalendarAction): Calendar
         tasks: [...state.tasks, action.payload],
       };
     case 'UPDATE_TASK':
-      const updatedTasks = state.tasks.map(task => 
-        task.id === action.payload.id ? action.payload : task
+      // Ensure we're updating the correct task by ID and not creating duplicates
+      const updatedTasks = state.tasks.map(existingTask => 
+        existingTask.id === action.payload.id 
+          ? { ...action.payload } // Replace the entire task object
+          : existingTask // Keep other tasks unchanged
       );
+      
       return {
         ...state,
         tasks: updatedTasks,
@@ -120,9 +124,13 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Save state to localStorage whenever it changes
+  // Save state to localStorage whenever it changes (but avoid saving during rapid updates)
   useEffect(() => {
-    localStorage.setItem('calendar-state', JSON.stringify(state));
+    const timeoutId = setTimeout(() => {
+      localStorage.setItem('calendar-state', JSON.stringify(state));
+    }, 100); // Debounce to prevent excessive saves during resize
+
+    return () => clearTimeout(timeoutId);
   }, [state]);
 
   return (

@@ -3,7 +3,7 @@ import type { Task } from '../types';
 import { useCalendar } from '../context/CalendarContext';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { addDays, startOfDay } from 'date-fns';
+import { addDays, startOfDay, differenceInDays } from 'date-fns';
 
 interface TaskBarProps {
   task: Task;
@@ -16,10 +16,10 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
   const { dispatch } = useCalendar();
   const [isResizing, setIsResizing] = useState(false);
   const [resizeMode, setResizeMode] = useState<'start' | 'end' | null>(null);
-  const [dragStartX, setDragStartX] = useState(0);
+  const [startMouseX, setStartMouseX] = useState(0);
   const [currentMouseX, setCurrentMouseX] = useState(0);
-  const [originalTask, setOriginalTask] = useState<Task | null>(null);
-  const [tempDates, setTempDates] = useState<{ startDate: Date; endDate: Date } | null>(null);
+  const [originalStartDate, setOriginalStartDate] = useState<Date | null>(null);
+  const [originalEndDate, setOriginalEndDate] = useState<Date | null>(null);
   const taskRef = useRef<HTMLDivElement>(null);
 
   // Format date for display
@@ -53,75 +53,65 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
 
     setIsResizing(true);
     setResizeMode(edge);
-    setDragStartX(clientX);
+    setStartMouseX(clientX);
     setCurrentMouseX(clientX);
-    setOriginalTask({ ...task });
-
-    // Initialize temp dates with current task dates
-    setTempDates({
-      startDate: new Date(task.startDate),
-      endDate: new Date(task.endDate)
-    });
+    setOriginalStartDate(new Date(task.startDate));
+    setOriginalEndDate(new Date(task.endDate));
   };
 
-  // Handle resize move
+  // Simple and direct resize move handler
   const handleResizeMove = (e: MouseEvent | TouchEvent) => {
-    if (!isResizing || !resizeMode || !originalTask || !taskRef.current) return;
+    if (!isResizing || !resizeMode || !originalStartDate || !originalEndDate) return;
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const deltaX = clientX - dragStartX;
-
-    // Update current mouse position for tooltip positioning
     setCurrentMouseX(clientX);
 
-    // Get the calendar grid container for width calculation
-    const calendarGrid = taskRef.current.closest('.grid');
-    if (!calendarGrid) return;
+    // Find the calendar day that the mouse is over
+    const dayElements = document.querySelectorAll('.calendar-day');
+    let targetDate: Date | null = null;
 
-    const gridRect = calendarGrid.getBoundingClientRect();
-    const dayWidth = gridRect.width / 7; // 7 days in a week
-    const daysDelta = Math.round(deltaX / dayWidth);
+    for (const dayEl of dayElements) {
+      const rect = dayEl.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right) {
+        const dateStr = dayEl.getAttribute('data-date');
+        if (dateStr) {
+          targetDate = new Date(dateStr);
+          break;
+        }
+      }
+    }
 
-    // Only update if there's a meaningful change
-    if (daysDelta === 0) return;
+    if (!targetDate) return;
 
     // Calculate new dates based on resize mode
     let newStartDate: Date;
     let newEndDate: Date;
 
     if (resizeMode === 'start') {
-      // When resizing start, move the start date
-      newStartDate = addDays(originalTask.startDate, daysDelta);
-      newEndDate = new Date(originalTask.endDate);
+      // Dragging the start handle
+      newStartDate = startOfDay(targetDate);
+      newEndDate = new Date(originalEndDate);
 
-      // Ensure start date doesn't go past end date (minimum 1 day task)
+      // Ensure start is before end
       if (newStartDate >= newEndDate) {
         newStartDate = addDays(newEndDate, -1);
       }
     } else {
-      // When resizing end, move the end date
-      newStartDate = new Date(originalTask.startDate);
-      newEndDate = addDays(originalTask.endDate, daysDelta);
+      // Dragging the end handle
+      newStartDate = new Date(originalStartDate);
+      newEndDate = startOfDay(targetDate);
 
-      // Ensure end date doesn't go before start date (minimum 1 day task)
+      // Ensure end is after start
       if (newEndDate <= newStartDate) {
         newEndDate = addDays(newStartDate, 1);
       }
     }
 
-    // Update temporary dates for smooth visual feedback
-    const newTempDates = {
-      startDate: startOfDay(newStartDate),
-      endDate: startOfDay(newEndDate),
-    };
-    
-    setTempDates(newTempDates);
-
-    // Also update the actual task immediately for live visual feedback
+    // Update the task immediately
     const updatedTask: Task = {
-      ...originalTask,
-      startDate: newTempDates.startDate,
-      endDate: newTempDates.endDate,
+      ...task,
+      startDate: newStartDate,
+      endDate: newEndDate,
     };
 
     dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
@@ -129,13 +119,12 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
 
   // Handle resize end
   const handleResizeEnd = () => {
-    // Reset all resize state (task is already updated during move)
     setIsResizing(false);
     setResizeMode(null);
-    setDragStartX(0);
+    setStartMouseX(0);
     setCurrentMouseX(0);
-    setOriginalTask(null);
-    setTempDates(null);
+    setOriginalStartDate(null);
+    setOriginalEndDate(null);
   };
 
   // Add event listeners for resize
@@ -190,39 +179,32 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
     }
   };
 
-  // Calculate task position and width
+  // Simple task position and width calculation
   const getTaskMetrics = () => {
     if (!isFirstDay) {
       return { width: 0, left: 0 };
     }
 
-    // Use temporary dates during resizing for smooth visual feedback
-    const displayDates = tempDates || { startDate: task.startDate, endDate: task.endDate };
-
-    const taskStartDate = startOfDay(displayDates.startDate);
-    const taskEndDate = startOfDay(displayDates.endDate);
-
-    // Calculate the start and end positions within this week
+    const taskStartDate = startOfDay(task.startDate);
+    const taskEndDate = startOfDay(task.endDate);
     const weekStart = startOfDay(weekStartDate);
     const weekEnd = startOfDay(addDays(weekStartDate, 6));
 
-    // Clamp task dates to this week's boundaries
+    // Find the visible portion of the task in this week
     const visibleStart = taskStartDate < weekStart ? weekStart : taskStartDate;
     const visibleEnd = taskEndDate > weekEnd ? weekEnd : taskEndDate;
 
-    // Calculate day indices within the week (0-6)
+    // Calculate day indices (0-6)
     const startDayIndex = Math.floor((visibleStart.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
     const endDayIndex = Math.floor((visibleEnd.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Calculate position and width as percentages
+    // Convert to percentages
     const left = (startDayIndex / 7) * 100;
     const width = ((endDayIndex - startDayIndex + 1) / 7) * 100;
 
-
-
     return {
-      width: Math.max(width, 14.28), // Minimum one day width (100/7 ≈ 14.28%)
-      left: Math.max(0, Math.min(left, 85.72)) // Ensure left position doesn't exceed week bounds
+      width: Math.max(width, 14.28), // Minimum one day
+      left: Math.max(0, Math.min(left, 85.72))
     };
   };
 
@@ -253,22 +235,22 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
           marginTop: `${dayIndex * 28}px`, // Spacing between overlapping tasks
           cursor: isResizing ? 'ew-resize' : 'grab',
         }}
-        title={`${task.name} (${(tempDates?.startDate || task.startDate).toLocaleDateString()} - ${(tempDates?.endDate || task.endDate).toLocaleDateString()})`}
+        title={`${task.name} (${task.startDate.toLocaleDateString()} - ${task.endDate.toLocaleDateString()})`}
         onClick={handleClick}
       >
         <div className="flex items-center h-full relative">
           {/* Left resize handle */}
           <div
-            className={`resize-handle absolute left-0 top-0 w-4 h-full cursor-ew-resize flex items-center justify-center z-20 ${isResizing && resizeMode === 'start' ? 'bg-blue-500 bg-opacity-50' : ''}`}
+            className={`resize-handle absolute left-0 top-0 w-4 h-full cursor-ew-resize flex items-center justify-center z-20 rounded-l ${isResizing && resizeMode === 'start' ? 'bg-blue-400' : 'hover:bg-black hover:bg-opacity-10'}`}
             onMouseDown={(e) => handleResizeStart(e, 'start')}
             onTouchStart={(e) => handleResizeStart(e, 'start')}
-            title="Drag to extend or reduce start date"
+            title="← Drag to adjust start date"
           >
-            <div className="w-1 h-4 bg-black bg-opacity-60 rounded"></div>
+            <div className="w-1 h-4 bg-white bg-opacity-90 rounded shadow-sm"></div>
           </div>
 
           {/* Task content */}
-          <div className="flex-1 mx-4 text-xs font-medium text-black pointer-events-none flex items-center justify-center relative">
+          <div className="flex-1 mx-4 text-xs font-medium text-black pointer-events-none flex items-center justify-center">
             <span className="truncate text-center w-full">
               {task.name}
             </span>
@@ -276,18 +258,18 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
 
           {/* Right resize handle */}
           <div
-            className={`resize-handle absolute right-0 top-0 w-4 h-full cursor-ew-resize flex items-center justify-center z-20 ${isResizing && resizeMode === 'end' ? 'bg-green-500 bg-opacity-50' : ''}`}
+            className={`resize-handle absolute right-0 top-0 w-4 h-full cursor-ew-resize flex items-center justify-center z-20 rounded-r ${isResizing && resizeMode === 'end' ? 'bg-green-400' : 'hover:bg-black hover:bg-opacity-10'}`}
             onMouseDown={(e) => handleResizeStart(e, 'end')}
             onTouchStart={(e) => handleResizeStart(e, 'end')}
-            title="Drag to extend or reduce end date"
+            title="Drag to adjust end date →"
           >
-            <div className="w-1 h-4 bg-black bg-opacity-60 rounded"></div>
+            <div className="w-1 h-4 bg-white bg-opacity-90 rounded shadow-sm"></div>
           </div>
         </div>
       </div>
 
       {/* Floating drag feedback tooltip */}
-      {isResizing && tempDates && (
+      {isResizing && (
         <div
           className="fixed z-50 pointer-events-none transform -translate-x-1/2"
           style={{
@@ -295,12 +277,12 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
             top: `${50}px`,
           }}
         >
-          <div className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg shadow-xl border border-blue-500 animate-pulse">
+          <div className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg shadow-xl border border-blue-500">
             <div className="font-semibold text-center">
               📅 {task.name}
             </div>
             <div className="text-xs text-center mt-1 opacity-95">
-              {formatDateForDisplay(tempDates.startDate)} → {formatDateForDisplay(tempDates.endDate)}
+              {formatDateForDisplay(task.startDate)} → {formatDateForDisplay(task.endDate)}
             </div>
             <div className="text-xs text-center mt-1 opacity-80">
               {resizeMode === 'start' ? '← Adjusting start' : 'Adjusting end →'}

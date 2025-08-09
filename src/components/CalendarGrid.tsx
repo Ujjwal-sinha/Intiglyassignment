@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DndContext, type DragEndEvent, type DragOverEvent, type DragStartEvent } from '@dnd-kit/core';
 import { CalendarDay } from './CalendarDay';
 import { useCalendar } from '../context/CalendarContext';

@@ -73,22 +73,19 @@
   }
   
   .task-bar .resize-handle {
-    @apply opacity-60 transition-opacity duration-200;
-    background: rgba(0, 0, 0, 0.1);
+    @apply opacity-70 transition-all duration-200;
   }
   
   .task-bar:hover .resize-handle {
     @apply opacity-100;
-    background: rgba(0, 0, 0, 0.2);
   }
   
   .task-bar.resizing .resize-handle {
     @apply opacity-100;
-    background: rgba(0, 0, 0, 0.3);
   }
   
   .task-bar .resize-handle:hover {
-    @apply bg-black bg-opacity-30;
+    transform: scaleX(1.1);
   }
   
   .task-bar.resizing {

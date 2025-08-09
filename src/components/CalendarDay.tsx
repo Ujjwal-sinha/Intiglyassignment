@@ -77,10 +77,15 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
     }
     
     // For tasks spanning multiple days, render the task bar on the first day it appears in this week
-    // This could be either the task start date OR the week start date (whichever is later)
     const weekStart = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate());
+    
+    // The first day to render the task bar is the later of:
+    // 1. The task's actual start date
+    // 2. The start of this week
     const firstDayInWeek = taskStart >= weekStart ? taskStart : weekStart;
     const isFirstDay = dayStart.getTime() === firstDayInWeek.getTime();
+    
+
     
     return { task, isFirstDay };
   };

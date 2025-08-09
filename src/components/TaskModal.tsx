@@ -21,6 +21,8 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     category: 'todo' as TaskCategory,
+    startDate: '',
+    endDate: '',
   });
 
   useEffect(() => {
@@ -28,11 +30,15 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
       setFormData({
         name: task.name || '',
         category: task.category || 'todo',
+        startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '',
+        endDate: task.endDate ? new Date(task.endDate).toISOString().split('T')[0] : '',
       });
     } else {
       setFormData({
         name: '',
         category: 'todo',
+        startDate: '',
+        endDate: '',
       });
     }
   }, [task]);
@@ -42,13 +48,16 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
     
     if (!formData.name.trim()) return;
 
-    if (mode === 'create' && task?.startDate && task?.endDate) {
+    if (mode === 'create') {
+      const startDate = formData.startDate ? new Date(formData.startDate) : (task?.startDate ? new Date(task.startDate) : new Date());
+      const endDate = formData.endDate ? new Date(formData.endDate) : (task?.endDate ? new Date(task.endDate) : new Date());
+      
       const newTask: Task = {
         id: Date.now().toString(),
         name: formData.name.trim(),
         category: formData.category,
-        startDate: new Date(task.startDate),
-        endDate: new Date(task.endDate),
+        startDate: startDate,
+        endDate: endDate,
         createdAt: new Date(),
       };
       
@@ -58,6 +67,8 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
         ...task as Task,
         name: formData.name.trim(),
         category: formData.category,
+        startDate: formData.startDate ? new Date(formData.startDate) : new Date(task.startDate || new Date()),
+        endDate: formData.endDate ? new Date(formData.endDate) : new Date(task.endDate || new Date()),
       };
       
       dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
@@ -67,9 +78,12 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
   };
 
   const handleDelete = () => {
-    if (task?.id) {
-      dispatch({ type: 'DELETE_TASK', payload: task.id });
-      onClose();
+    if (task?.id && task.name) {
+      const confirmDelete = window.confirm(`Are you sure you want to delete the task "${task.name}"? This action cannot be undone.`);
+      if (confirmDelete) {
+        dispatch({ type: 'DELETE_TASK', payload: task.id });
+        onClose();
+      }
     }
   };
 
@@ -77,7 +91,7 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-bold mb-4">
           {mode === 'create' ? 'Create New Task' : 'Edit Task'}
         </h2>
@@ -120,36 +134,69 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                id="startDate"
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                id="endDate"
+                value={formData.endDate}
+                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
           {mode === 'create' && task?.startDate && task?.endDate && (
             <div className="text-sm text-gray-600">
               <p>Date Range: {new Date(task.startDate).toLocaleDateString()} - {new Date(task.endDate).toLocaleDateString()}</p>
             </div>
           )}
 
-          <div className="flex justify-end space-x-3 pt-4">
-            {mode === 'edit' && (
+          <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+            <div className="flex space-x-3">
+              {mode === 'edit' && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  🗑️ Delete Task
+                </button>
+              )}
+            </div>
+            
+            <div className="flex space-x-3">
               <button
                 type="button"
-                onClick={handleDelete}
-                className="px-4 py-2 text-red-600 border border-red-600 rounded-md hover:bg-red-50"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
-                Delete
+                Cancel
               </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!formData.name.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {mode === 'create' ? 'Create' : 'Save'}
-            </button>
+              
+              <button
+                type="submit"
+                disabled={!formData.name.trim()}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {mode === 'create' ? '✅ Create Task' : '💾 Update Task'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

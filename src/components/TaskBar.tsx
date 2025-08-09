@@ -260,7 +260,7 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
           ...style,
           width: `${taskWidth}%`,
           left: `${taskLeft}%`,
-          top: `${dayIndex * 55}px`,
+          top: `${dayIndex * 40}px`,
           cursor: isResizing ? 'ew-resize' : (transform ? 'grabbing' : 'grab'),
           transition: isResizing ? 'none' : 'all 0.2s ease',
         }}
@@ -269,8 +269,8 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
         {/* Left resize handle */}
         <div
           className={`
-            absolute left-0 top-0 w-4 h-full cursor-ew-resize z-10
-            bg-black bg-opacity-20 rounded-l-lg
+            absolute left-0 top-0 w-3 h-full cursor-ew-resize z-10
+            bg-black bg-opacity-20 rounded-l-md
             hover:bg-opacity-40 transition-all duration-200
             ${isResizing && resizeMode === 'start' ? 'bg-blue-500 bg-opacity-60' : ''}
           `}
@@ -279,24 +279,17 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
         />
 
         {/* Task content */}
-        <div className="flex-1 px-1 py-1 flex items-center justify-center text-center">
-          <span className="pointer-events-none leading-tight" style={{ 
-            fontSize: '12px', 
-            wordBreak: 'break-word',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden'
-          }}>
-            {task.name || 'Task'}
+        <div className="flex-1 px-2 py-2 text-sm font-semibold text-black flex items-center justify-center">
+          <span className="truncate text-center pointer-events-none whitespace-nowrap">
+            {task.name}
           </span>
         </div>
 
         {/* Right resize handle */}
         <div
           className={`
-            absolute right-0 top-0 w-4 h-full cursor-ew-resize z-10
-            bg-black bg-opacity-20 rounded-r-lg
+            absolute right-0 top-0 w-3 h-full cursor-ew-resize z-10
+            bg-black bg-opacity-20 rounded-r-md
             hover:bg-opacity-40 transition-all duration-200
             ${isResizing && resizeMode === 'end' ? 'bg-green-500 bg-opacity-60' : ''}
           `}

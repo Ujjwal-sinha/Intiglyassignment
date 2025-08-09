@@ -130,7 +130,7 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
         {getDayNumber(day.date)}
       </div>
       
-      <div className="relative min-h-[140px]">
+      <div className="relative min-h-[120px]">
         {dayTasks
           .map((task, index) => ({ originalTask: task, index, ...getTaskForDay(task, day.date) }))
           .filter(({ isFirstDay }) => isFirstDay) // Only render on first day

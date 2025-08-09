@@ -12,7 +12,7 @@
 
 @layer components {
   .calendar-day {
-    @apply border border-gray-200 p-2 min-h-[180px] relative bg-white hover:bg-gray-50 transition-colors cursor-pointer;
+    @apply border border-gray-200 p-2 min-h-[160px] relative bg-white hover:bg-gray-50 transition-colors cursor-pointer;
     /* Ensure proper task alignment */
     box-sizing: border-box;
   }
@@ -68,27 +68,21 @@
   }
   
   .task-bar {
-    @apply text-sm font-bold cursor-pointer shadow-md text-white;
-    min-height: 50px;
-    height: 50px;
-    line-height: 1.2;
+    @apply text-sm font-semibold cursor-pointer shadow-md;
+    min-height: 36px;
+    height: 36px;
+    line-height: 1.3;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
-    justify-content: center;
     position: absolute;
     z-index: 10;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
     box-sizing: border-box;
     margin: 2px;
     user-select: none;
     -webkit-user-select: none;
     overflow: hidden;
-    text-shadow: 
-      1px 1px 2px rgba(0, 0, 0, 0.9),
-      0px 0px 4px rgba(0, 0, 0, 0.7),
-      -1px -1px 2px rgba(0, 0, 0, 0.5);
   }
   
   .task-bar:not(.resizing):not(.dragging) {
@@ -122,8 +116,8 @@
     }
     
     .task-bar {
-      min-height: 55px;
-      height: 55px;
+      min-height: 40px;
+      height: 40px;
     }
   }
   

@@ -93,6 +93,12 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
   
+  .task-bar.dragging {
+    @apply shadow-xl z-50;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    transform: rotate(2deg) scale(1.05);
+  }
+  
   .task-bar.resizing-start .resize-handle:first-child {
     @apply bg-blue-500 bg-opacity-50;
     border-left: 3px solid #3b82f6;

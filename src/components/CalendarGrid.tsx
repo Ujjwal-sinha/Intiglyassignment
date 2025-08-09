@@ -56,11 +56,6 @@ export function CalendarGrid() {
 
       // If single day selected, make it a 1-day task (same start and end is fine for single day)
       // If multiple days selected, keep the range as is
-      console.log('Creating task with dates:', {
-        start: startDate.toDateString(),
-        end: endDate.toDateString(),
-        isSingleDay: startDate.getTime() === endDate.getTime()
-      });
 
       dispatch({
         type: 'SET_MODAL',

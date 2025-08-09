@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DndContext, type DragEndEvent, type DragOverEvent, type DragStartEvent } from '@dnd-kit/core';
 import { CalendarDay } from './CalendarDay';
 import { useCalendar } from '../context/CalendarContext';
 import { getCalendarDays, isCurrentMonth, isTodayDate } from '../utils/dateUtils';
+import { differenceInDays, addDays, startOfDay } from 'date-fns';
 import type { Task } from '../types';
 
 export function CalendarGrid() {
@@ -37,17 +38,29 @@ export function CalendarGrid() {
 
   const handleDragEnd = () => {
     setIsDragging(false);
-    
+
     if (dragSelection.startDate && dragSelection.endDate) {
       let startDate = new Date(dragSelection.startDate);
       let endDate = new Date(dragSelection.endDate);
-      
-      // Normalize date range
-      if (startDate > endDate) {
+
+      // Normalize date range - ensure start is before or equal to end
+      if (startDate.getTime() > endDate.getTime()) {
         const temp = startDate;
         startDate = endDate;
         endDate = temp;
       }
+
+      // Ensure dates are at start of day for consistency
+      startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+      // If single day selected, make it a 1-day task (same start and end is fine for single day)
+      // If multiple days selected, keep the range as is
+      console.log('Creating task with dates:', {
+        start: startDate.toDateString(),
+        end: endDate.toDateString(),
+        isSingleDay: startDate.getTime() === endDate.getTime()
+      });
 
       dispatch({
         type: 'SET_MODAL',
@@ -87,18 +100,18 @@ export function CalendarGrid() {
     const { active, over } = event;
     if (active.data.current?.type === 'task' && over?.data.current?.type === 'day') {
       const task = active.data.current.task as Task;
-      const newDate = over.data.current.date as Date;
-      
-      // Calculate the duration of the task
-      const duration = Math.ceil((task.endDate.getTime() - task.startDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      // Update task dates
-      const updatedTask = {
+      const newStartDate = over.data.current.date as Date;
+
+      // Calculate the duration of the task in days
+      const duration = differenceInDays(task.endDate, task.startDate);
+
+      // Update task dates - move the task to the new start date and maintain duration
+      const updatedTask: Task = {
         ...task,
-        startDate: new Date(newDate),
-        endDate: new Date(newDate.getTime() + duration * 24 * 60 * 60 * 1000),
+        startDate: startOfDay(newStartDate),
+        endDate: startOfDay(addDays(newStartDate, duration)),
       };
-      
+
       dispatch({ type: 'UPDATE_TASK', payload: updatedTask });
     }
   };
@@ -143,7 +156,17 @@ export function CalendarGrid() {
           })}
         </div>
 
-
+        {/* Drag Selection Info */}
+        {dragSelection.isSelecting && dragSelection.startDate && dragSelection.endDate && (
+          <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg z-50">
+            <div className="text-sm font-medium">
+              Creating Task: {dragSelection.startDate.toLocaleDateString()} - {dragSelection.endDate.toLocaleDateString()}
+            </div>
+            <div className="text-xs opacity-75">
+              Release to open task creation modal
+            </div>
+          </div>
+        )}
       </div>
     </DndContext>
   );

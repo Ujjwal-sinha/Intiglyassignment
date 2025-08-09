@@ -8,6 +8,7 @@ import {
   isToday,
   isSameMonth,
   addWeeks,
+  addDays,
   startOfDay,
   endOfDay,
   isWithinInterval,
@@ -65,4 +66,20 @@ export function getDayName(date: Date) {
 
 export function getDayNumber(date: Date) {
   return format(date, 'd');
+}
+
+export function createWeekScale(weekStartDate: Date) {
+  const weekEndDate = addDays(weekStartDate, 6);
+  return {
+    weekStart: weekStartDate,
+    weekEnd: weekEndDate,
+    dateToPercent: (date: Date) => {
+      const daysDiff = Math.max(0, Math.min(6, Math.floor((date.getTime() - weekStartDate.getTime()) / (1000 * 60 * 60 * 24))));
+      return (daysDiff / 7) * 100;
+    },
+    percentToDate: (percent: number) => {
+      const days = Math.floor((percent / 100) * 7);
+      return addDays(weekStartDate, days);
+    }
+  };
 }

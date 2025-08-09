@@ -12,7 +12,7 @@
 
 @layer components {
   .calendar-day {
-    @apply border border-gray-200 p-2 min-h-[100px] relative bg-white hover:bg-gray-50 transition-colors;
+    @apply border border-gray-200 p-2 min-h-[120px] relative bg-white hover:bg-gray-50 transition-colors cursor-pointer;
   }
   
   .calendar-day.today {
@@ -23,8 +23,49 @@
     @apply bg-gray-50 text-gray-400;
   }
   
+  .calendar-day.selecting {
+    @apply bg-blue-100 border-blue-400 transition-colors;
+  }
+  
+  .calendar-day.selected-range {
+    @apply bg-blue-200 border-blue-500 transition-colors;
+    position: relative;
+  }
+  
+  .calendar-day.selected-range::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.3) 100%);
+    pointer-events: none;
+  }
+  
   .task-bar {
-    @apply rounded px-2 py-1 text-xs text-white font-medium cursor-pointer transition-all duration-200;
+    @apply rounded text-xs text-black font-medium cursor-pointer;
+    min-height: 24px;
+    height: 24px;
+    line-height: 1.2;
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+    display: flex;
+    align-items: center;
+    position: absolute;
+    z-index: 10;
+  }
+  
+  .task-bar:not(.resizing) {
+    transition: all 0.2s ease;
+  }
+  
+  .task-bar.resizing {
+    min-height: 28px;
+    height: auto;
+    z-index: 50;
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
   }
   
   .task-bar:hover {
@@ -32,48 +73,37 @@
   }
   
   .task-bar .resize-handle {
-    @apply absolute top-0 h-full cursor-ew-resize transition-all duration-200 z-20;
-    background: rgba(255, 255, 255, 0.6);
-    border: 2px solid rgba(255, 255, 255, 0.8);
-  }
-  
-  .task-bar .resize-handle:hover {
-    @apply bg-white bg-opacity-90;
-    border: 2px solid rgba(255, 255, 255, 1);
-    background: rgba(59, 130, 246, 0.7);
+    @apply opacity-60 transition-opacity duration-200;
+    background: rgba(0, 0, 0, 0.1);
   }
   
   .task-bar:hover .resize-handle {
-    @apply bg-white bg-opacity-70;
-    border: 2px solid rgba(255, 255, 255, 0.9);
+    @apply opacity-100;
+    background: rgba(0, 0, 0, 0.2);
   }
   
   .task-bar.resizing .resize-handle {
-    @apply bg-white bg-opacity-80;
-    border: 2px solid rgba(255, 255, 255, 1);
+    @apply opacity-100;
+    background: rgba(0, 0, 0, 0.3);
   }
   
-  .task-bar.resizing-start .resize-handle.left-0 {
-    @apply bg-blue-400 bg-opacity-90;
-    border: 2px solid rgba(59, 130, 246, 1);
-  }
-  
-  .task-bar.resizing-end .resize-handle.right-0 {
-    @apply bg-green-400 bg-opacity-90;
-    border: 2px solid rgba(34, 197, 94, 1);
+  .task-bar .resize-handle:hover {
+    @apply bg-black bg-opacity-30;
   }
   
   .task-bar.resizing {
-    @apply shadow-lg transform scale-105 z-50;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    @apply shadow-lg z-50;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
   
-  .task-bar.resizing-start .resize-handle.left-0 {
-    @apply bg-blue-500 bg-opacity-80;
+  .task-bar.resizing-start .resize-handle:first-child {
+    @apply bg-blue-500 bg-opacity-50;
+    border-left: 3px solid #3b82f6;
   }
   
-  .task-bar.resizing-end .resize-handle.right-0 {
-    @apply bg-green-500 bg-opacity-80;
+  .task-bar.resizing-end .resize-handle:last-child {
+    @apply bg-green-500 bg-opacity-50;
+    border-right: 3px solid #10b981;
   }
   
   .task-bar.todo {

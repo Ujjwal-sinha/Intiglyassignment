@@ -5,6 +5,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { TaskBar } from './TaskBar';
 import { getDayNumber } from '../utils/dateUtils';
 import { getTasksForDay, filterTasks } from '../utils/taskUtils';
+import { startOfWeek } from 'date-fns';
 
 interface CalendarDayProps {
   day: CalendarDayType;
@@ -30,6 +31,9 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
   // Filter tasks for this day
   const filteredTasks = filterTasks(tasks, state.filters);
   const dayTasks = getTasksForDay(filteredTasks, day.date);
+  
+  // Calculate week start date for D3 scale
+  const weekStartDate = startOfWeek(day.date);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only left mouse button
@@ -60,23 +64,51 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
   }, [isDragging]);
 
   const getTaskForDay = (task: Task, dayDate: Date) => {
-    const isFirstDay = dayDate.getTime() === task.startDate.getTime();
+    // Normalize both dates to start of day for proper comparison
+    const dayStart = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+    const taskStart = new Date(task.startDate.getFullYear(), task.startDate.getMonth(), task.startDate.getDate());
+    const taskEnd = new Date(task.endDate.getFullYear(), task.endDate.getMonth(), task.endDate.getDate());
+    
+    // Check if this day is within the task range
+    const isInTaskRange = dayStart >= taskStart && dayStart <= taskEnd;
+    
+    if (!isInTaskRange) {
+      return { task, isFirstDay: false };
+    }
+    
+    // For tasks spanning multiple days, render the task bar on the first day it appears in this week
+    // This could be either the task start date OR the week start date (whichever is later)
+    const weekStart = new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate());
+    const firstDayInWeek = taskStart >= weekStart ? taskStart : weekStart;
+    const isFirstDay = dayStart.getTime() === firstDayInWeek.getTime();
+    
     return { task, isFirstDay };
   };
 
-  const isDateSelected = () => {
-    if (!dragSelection.isSelecting || !dragSelection.startDate || !dragSelection.endDate) {
-      return false;
+  const getSelectionState = () => {
+    if (!dragSelection.isSelecting || !dragSelection.startDate) {
+      return { isSelected: false, isSelecting: false };
     }
     
-    const start = new Date(dragSelection.startDate);
-    const end = new Date(dragSelection.endDate);
-    const current = new Date(day.date);
+    const startTime = new Date(dragSelection.startDate).getTime();
+    const currentTime = new Date(day.date).getTime();
     
-    const minDate = start < end ? start : end;
-    const maxDate = start < end ? end : start;
+    if (!dragSelection.endDate) {
+      // Just started dragging
+      return {
+        isSelected: currentTime === startTime,
+        isSelecting: currentTime === startTime
+      };
+    }
     
-    return current >= minDate && current <= maxDate;
+    const endTime = new Date(dragSelection.endDate).getTime();
+    const minTime = Math.min(startTime, endTime);
+    const maxTime = Math.max(startTime, endTime);
+    
+    return {
+      isSelected: currentTime >= minTime && currentTime <= maxTime,
+      isSelecting: dragSelection.isSelecting
+    };
   };
 
   return (
@@ -85,7 +117,8 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
         setNodeRef(node);
         dayRef.current = node;
       }}
-      className={`calendar-day ${day.isToday ? 'today' : ''} ${!day.isCurrentMonth ? 'other-month' : ''} ${isDateSelected() ? 'bg-blue-200 bg-opacity-50' : ''}`}
+      data-date={day.date.toISOString()}
+      className={`calendar-day ${day.isToday ? 'today' : ''} ${!day.isCurrentMonth ? 'other-month' : ''} ${getSelectionState().isSelected ? 'selected-range' : ''} ${getSelectionState().isSelecting && !getSelectionState().isSelected ? 'selecting' : ''}`}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
     >
@@ -93,7 +126,7 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
         {getDayNumber(day.date)}
       </div>
       
-      <div className="relative min-h-[60px]">
+      <div className="relative min-h-[100px]">
         {dayTasks.map((task, index) => {
           const { isFirstDay } = getTaskForDay(task, day.date);
           return (
@@ -102,6 +135,7 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
               task={task}
               isFirstDay={isFirstDay}
               dayIndex={index}
+              weekStartDate={weekStartDate}
             />
           );
         })}

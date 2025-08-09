@@ -73,20 +73,15 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
     const isInTaskRange = dayStart >= taskStart && dayStart <= taskEnd;
     
     if (!isInTaskRange) {
-      return { task, isFirstDay: false };
+      return { task, isFirstDay: false, isLastDay: false, isMiddleDay: false };
     }
     
-    // For multi-day tasks, only render the TaskBar on the FIRST day it appears in this week
-    // This prevents duplicate rendering across multiple days
-    const weekStart = startOfDay(weekStartDate);
+    // Determine the position of this day in the task range
+    const isFirstDay = dayStart.getTime() === taskStart.getTime();
+    const isLastDay = dayStart.getTime() === taskEnd.getTime();
+    const isMiddleDay = !isFirstDay && !isLastDay;
     
-    // The first day to render the task bar is the later of:
-    // 1. The task's actual start date
-    // 2. The start of this week
-    const firstDayInWeek = taskStart >= weekStart ? taskStart : weekStart;
-    const isFirstDay = dayStart.getTime() === firstDayInWeek.getTime();
-    
-    return { task, isFirstDay };
+    return { task, isFirstDay, isLastDay, isMiddleDay };
   };
 
   const getSelectionState = () => {
@@ -133,14 +128,16 @@ export function CalendarDay({ day, onDragStart, onDragOver, onDragEnd }: Calenda
       <div className="relative min-h-[240px] overflow-visible">
         {dayTasks
           .map((task, index) => ({ originalTask: task, index, ...getTaskForDay(task, day.date) }))
-          .filter(({ isFirstDay }) => isFirstDay) // Only render on first day
-          .map(({ originalTask, index }) => (
+          .filter(({ isFirstDay, isLastDay, isMiddleDay }) => isFirstDay || isLastDay || isMiddleDay)
+          .map(({ originalTask, index, isFirstDay, isLastDay, isMiddleDay }) => (
             <TaskBar
-              key={`task-${originalTask.id}-week-${weekStartDate.toISOString()}`}
+              key={`task-${originalTask.id}-day-${day.date.toISOString()}`}
               task={originalTask}
-              isFirstDay={true}
+              isFirstDay={isFirstDay}
               dayIndex={index}
               weekStartDate={weekStartDate}
+              isLastDay={isLastDay}
+              isMiddleDay={isMiddleDay}
             />
           ))}
       </div>

@@ -12,9 +12,10 @@
 
 @layer components {
   .calendar-day {
-    @apply border border-gray-200 p-2 min-h-[160px] relative bg-white hover:bg-gray-50 transition-colors cursor-pointer;
+    @apply border border-gray-200 p-2 min-h-[280px] relative bg-white hover:bg-gray-50 transition-colors cursor-pointer;
     /* Ensure proper task alignment */
     box-sizing: border-box;
+    overflow: visible;
   }
   
   .calendar-day.today {
@@ -68,21 +69,23 @@
   }
   
   .task-bar {
-    @apply text-sm font-semibold cursor-pointer shadow-md;
-    min-height: 36px;
-    height: 36px;
-    line-height: 1.3;
+    @apply cursor-pointer shadow-lg rounded-lg;
+    min-height: 60px;
+    height: 60px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     align-items: center;
     position: absolute;
-    z-index: 10;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 20;
     box-sizing: border-box;
     margin: 2px;
     user-select: none;
     -webkit-user-select: none;
-    overflow: hidden;
+    overflow: visible;
+    font-weight: 900;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   .task-bar:not(.resizing):not(.dragging) {
@@ -195,28 +198,33 @@
     box-shadow: inset -2px 0 0 #10b981;
   }
   
+  /* Each task category has distinct colors with maximum contrast for black text */
   .task-bar.todo {
-    @apply bg-red-500;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    border: 1px solid #dc2626;
+    background: #ffffff;
+    border: 4px solid #dc2626;
+    color: #000000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 0 0 2px #fecaca;
   }
   
   .task-bar.in-progress {
-    @apply bg-blue-500;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border: 1px solid #2563eb;
+    background: #ffffff;
+    border: 4px solid #2563eb;
+    color: #000000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 0 0 2px #bfdbfe;
   }
   
   .task-bar.review {
-    @apply bg-yellow-500;
-    background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-    border: 1px solid #ca8a04;
+    background: #ffffff;
+    border: 4px solid #d97706;
+    color: #000000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 0 0 2px #fef3c7;
   }
   
   .task-bar.completed {
-    @apply bg-green-500;
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-    border: 1px solid #16a34a;
+    background: #ffffff;
+    border: 4px solid #16a34a;
+    color: #000000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 0 0 2px #bbf7d0;
   }
   
   .modal-overlay {

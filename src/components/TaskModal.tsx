@@ -47,8 +47,8 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
         id: Date.now().toString(),
         name: formData.name.trim(),
         category: formData.category,
-        startDate: task.startDate,
-        endDate: task.endDate,
+        startDate: new Date(task.startDate),
+        endDate: new Date(task.endDate),
         createdAt: new Date(),
       };
       
@@ -122,7 +122,7 @@ export function TaskModal({ isOpen, onClose, task, mode }: TaskModalProps) {
 
           {mode === 'create' && task?.startDate && task?.endDate && (
             <div className="text-sm text-gray-600">
-              <p>Date Range: {task.startDate.toLocaleDateString()} - {task.endDate.toLocaleDateString()}</p>
+              <p>Date Range: {new Date(task.startDate).toLocaleDateString()} - {new Date(task.endDate).toLocaleDateString()}</p>
             </div>
           )}
 

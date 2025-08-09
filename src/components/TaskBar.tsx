@@ -260,7 +260,7 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
           ...style,
           width: `${taskWidth}%`,
           left: `${taskLeft}%`,
-          top: `${dayIndex * 40}px`,
+          top: `${dayIndex * 70}px`,
           cursor: isResizing ? 'ew-resize' : (transform ? 'grabbing' : 'grab'),
           transition: isResizing ? 'none' : 'all 0.2s ease',
         }}
@@ -279,8 +279,23 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
         />
 
         {/* Task content */}
-        <div className="flex-1 px-2 py-2 text-sm font-semibold text-black flex items-center justify-center">
-          <span className="truncate text-center pointer-events-none whitespace-nowrap">
+        <div className="flex-1 px-2 py-3 flex items-center justify-center">
+          <span style={{
+            fontSize: '16px',
+            fontWeight: '900',
+            color: '#000000',
+            textAlign: 'center',
+            lineHeight: '1.2',
+            textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(255, 255, 255, 0.9)',
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            fontFamily: 'Arial, sans-serif',
+            display: 'block',
+            width: '100%',
+            overflow: 'visible',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis'
+          }}>
             {task.name}
           </span>
         </div>
@@ -308,16 +323,16 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
           }}
         >
           <div className={`
-            text-black text-sm px-3 py-2 rounded-lg shadow-xl border-2 bg-white
+            text-gray-800 text-sm px-3 py-2 rounded-lg shadow-xl border-2 bg-white
             ${resizeMode === 'start' ? 'border-blue-400' : 'border-green-400'}
           `}>
-            <div className="font-semibold text-center">
+            <div className="font-semibold text-center text-gray-900">
               {task.name}
             </div>
-            <div className="text-xs text-center mt-1">
+            <div className="text-xs text-center mt-1 text-gray-700">
               {resizeStartDate.toLocaleDateString()} → {resizeEndDate.toLocaleDateString()}
             </div>
-            <div className="text-xs text-center opacity-80">
+            <div className="text-xs text-center text-gray-600">
               {duration} day{duration !== 1 ? 's' : ''}
             </div>
           </div>
@@ -338,11 +353,11 @@ export function TaskBar({ task, isFirstDay, dayIndex, weekStartDate }: TaskBarPr
             top: `${100}px`,
           }}
         >
-          <div className="bg-white text-black text-sm px-3 py-2 rounded-lg shadow-xl border border-purple-400">
-            <div className="font-semibold text-center">
+          <div className="bg-white text-gray-800 text-sm px-3 py-2 rounded-lg shadow-xl border border-purple-400">
+            <div className="font-semibold text-center text-gray-900">
               Moving {task.name}
             </div>
-            <div className="text-xs text-center opacity-80">
+            <div className="text-xs text-center text-gray-600">
               {duration} day{duration !== 1 ? 's' : ''}
             </div>
           </div>

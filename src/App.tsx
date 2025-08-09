@@ -31,28 +31,56 @@ function CalendarApp() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Calendar App</h1>
-          
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between bg-white rounded-lg p-4 shadow-sm">
-            <button
-              onClick={handlePreviousMonth}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-            >
-              ← Previous
-            </button>
-            
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Modern Header */}
+      <div className="bg-white/80 backdrop-blur-md border-b border-white/20 shadow-lg sticky top-0 z-40">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {getMonthName(currentMonth)}
-              </h2>
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-xl">📅</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                  Smart Calendar
+                </h1>
+                <p className="text-sm text-gray-500">Organize your tasks beautifully</p>
+              </div>
+            </div>
+            
+            {/* Month Navigation */}
+            <div className="flex items-center bg-white/60 backdrop-blur-sm rounded-2xl p-1 shadow-lg border border-white/30">
+              <button
+                onClick={handlePreviousMonth}
+                className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+                title="Previous Month"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <div className="px-6 py-2">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  {getMonthName(currentMonth)}
+                </h2>
+              </div>
+              
+              <button
+                onClick={handleNextMonth}
+                className="p-3 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+                title="Next Month"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex items-center space-x-3">
               <button
                 onClick={handleToday}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg"
               >
                 Today
               </button>
@@ -61,21 +89,16 @@ function CalendarApp() {
                   localStorage.clear();
                   window.location.reload();
                 }}
-                className="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700"
+                className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg"
               >
                 Reset
               </button>
             </div>
-            
-            <button
-              onClick={handleNextMonth}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-            >
-              Next →
-            </button>
           </div>
         </div>
+      </div>
 
+      <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">

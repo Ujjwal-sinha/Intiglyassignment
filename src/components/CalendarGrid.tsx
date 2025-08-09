@@ -122,18 +122,26 @@ export function CalendarGrid() {
       onDragOver={handleDndDragOver}
       onDragEnd={handleDndDragEnd}
     >
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white/90 backdrop-blur-sm border border-white/40 rounded-3xl overflow-hidden shadow-2xl">
         {/* Calendar Header */}
-        <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="p-3 text-center text-sm font-medium text-gray-700">
-              {day}
+        <div className="grid grid-cols-7 bg-gradient-to-r from-slate-100 to-slate-50 border-b border-white/50">
+          {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => (
+            <div key={day} className="p-4 text-center">
+              <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {day.slice(0, 3)}
+              </div>
+              <div className="text-sm font-semibold text-gray-700 mt-1">
+                {day.slice(0, 3)}
+              </div>
+              {(index === 0 || index === 6) && (
+                <div className="w-1 h-1 bg-blue-400 rounded-full mx-auto mt-1"></div>
+              )}
             </div>
           ))}
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 relative">
+        <div className="grid grid-cols-7 relative bg-gradient-to-br from-white/50 to-slate-50/50">
           {calendarDays.map((date) => {
             const dayData = {
               date,
@@ -154,14 +162,20 @@ export function CalendarGrid() {
           })}
         </div>
 
-        {/* Drag Selection Info */}
+        {/* Enhanced Drag Selection Info */}
         {dragSelection.isSelecting && dragSelection.startDate && dragSelection.endDate && (
-          <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg z-50">
-            <div className="text-sm font-medium">
-              Creating Task: {dragSelection.startDate.toLocaleDateString()} - {dragSelection.endDate.toLocaleDateString()}
+          <div className="absolute top-6 left-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-2xl shadow-2xl z-50 border border-white/20">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <div className="text-sm font-semibold">
+                Creating Task
+              </div>
             </div>
-            <div className="text-xs opacity-75">
-              Release to open task creation modal
+            <div className="text-xs opacity-90 mt-1">
+              {dragSelection.startDate.toLocaleDateString()} → {dragSelection.endDate.toLocaleDateString()}
+            </div>
+            <div className="text-xs opacity-75 mt-1">
+              Release to open task editor
             </div>
           </div>
         )}

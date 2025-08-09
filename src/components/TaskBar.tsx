@@ -269,17 +269,16 @@ export function TaskBar({ task, isFirstDay, dayIndex, isLastDay = false, isMiddl
         )}
 
         {/* Task content */}
-        <div className="flex-1 px-2 py-3 flex items-center justify-center">
+        <div className="flex-1 px-3 py-3 flex items-center justify-center">
           <span style={{
-            fontSize: '16px',
-            fontWeight: '900',
-            color: '#000000',
+            fontSize: '15px',
+            fontWeight: '800',
+            color: '#ffffff',
             textAlign: 'center',
             lineHeight: '1.2',
-            textShadow: '2px 2px 4px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(255, 255, 255, 0.9)',
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            fontFamily: 'Arial, sans-serif',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2)',
+            letterSpacing: '0.5px',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
             display: 'block',
             width: '100%',
             overflow: 'visible',
